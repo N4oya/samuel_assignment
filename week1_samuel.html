@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>暮山 · Mountains at Dusk</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #e8e4da;
+    color: #354642;
+    font-family: Georgia, "Songti SC", "SimSun", serif;
+  }
+
+  main {
+    padding: 24px 0;
+    text-align: center;
+  }
+
+  canvas {
+    display: block;
+    width: min(90vw, 76vh, 800px);
+    height: min(90vw, 76vh, 800px);
+    box-shadow: 0 16px 48px #24353012;
+  }
+
+  h1 {
+    margin: 24px 0 8px;
+    font-size: 20px;
+    font-weight: normal;
+    letter-spacing: 0.35em;
+  }
+
+  p {
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    opacity: 0.6;
+  }
+
+  #error {
+    max-width: 85vw;
+    color: #963c32;
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+
+<body>
+<main>
+  <canvas id="art" aria-label="夕阳、青山与流动河水构成的动态山水画"></canvas>
+  <h1>暮山</h1>
+  <p>MOUNTAINS AT DUSK</p>
+  <pre id="error" hidden></pre>
+</main>
+
+<!-- My landscape shader -->
+<script id="fragment" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform vec2 u_resolution;
+uniform float u_time;
+
+void main() {
+    // Center the coordinates and keep circles round.
+    vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution.xy)
+           / u_resolution.y;
+
+    float edge = 1.5 / u_resolution.y;
+    float t = u_time;
+
+    // Paper and a small set of printing ink colors.
+    vec3 paper = vec3(0.94, 0.91, 0.83);
+    vec3 farGreen = vec3(0.53, 0.64, 0.58);
+    vec3 middleGreen = vec3(0.25, 0.43, 0.40);
+    vec3 nearGreen = vec3(0.075, 0.25, 0.26);
+    vec3 water = vec3(0.88, 0.89, 0.81);
+    vec3 color = paper;
+
+    // Slowly move the sun up and down.
+    float sunCycle = 0.5 + 0.5 * sin(t * 0.25);
+    float sunY = 0.145 + sunCycle * 0.12;
+    vec2 sunPosition = vec2(0.20, sunY);
+
+    vec3 sunset = vec3(
+        0.75 + sunCycle * 0.05,
+        0.23 + sunCycle * 0.06,
+        0.14
+    );
+
+    float sunDistance = length(p - sunPosition);
+    float sun = 1.0 - smoothstep(
+        0.105 - edge, 0.105 + edge, sunDistance
+    );
+    color = color * (1.0 - sun) + sunset * sun;
+
+    // Draw everything below this height as a mountain.
+    float farHeight = 0.055
+        + 0.105 * sin(p.x * 7.0 + 0.8)
+        + 0.035 * sin(p.x * 16.0 - 0.5);
+
+    float farMask = 1.0 - smoothstep(
+        farHeight - edge, farHeight + edge, p.y
+    );
+    color = color * (1.0 - farMask) + farGreen * farMask;
+
+    // A stretched, soft shape becomes drifting mist.
+    float mistX = sin(t * 0.32) * 0.23;
+    float mistY = 0.045
+        + sin(p.x * 5.0 + t * 0.4) * 0.012;
+
+    vec2 mistPoint = vec2(
+        (p.x - mistX) / 0.36,
+        (p.y - mistY) / 0.022
+    );
+
+    float mist = 1.0 - smoothstep(
+        0.35, 1.0, length(mistPoint)
+    );
+    mist = mist * farMask * 0.72;
+    color = color * (1.0 - mist) + paper * mist;
+
+    // Darker mountains sit in front of the distant ones.
+    float middleHeight = -0.07
+        + 0.09 * sin(p.x * 8.0 - 1.3)
+        + 0.025 * sin(p.x * 19.0 + 0.8);
+
+    float middleMask = 1.0 - smoothstep(
+        middleHeight - edge, middleHeight + edge, p.y
+    );
+    color = color * (1.0 - middleMask)
+          + middleGreen * middleMask;
+
+    float nearHeight = -0.22
+        + 0.065 * sin(p.x * 9.0 + 1.8)
+        + 0.025 * sin(p.x * 15.0);
+
+    float nearMask = 1.0 - smoothstep(
+        nearHeight - edge, nearHeight + edge, p.y
+    );
+    color = color * (1.0 - nearMask) + nearGreen * nearMask;
+
+    // The river gets wider toward the bottom of the picture.
+    float depth = (0.045 - p.y) / 0.545;
+    float riverProgress = smoothstep(0.0, 1.0, depth);
+
+    float riverCenter = 0.035
+        + 0.105 * sin(riverProgress * 7.0 - 0.5);
+
+    // Small side-to-side movement, stronger in the foreground.
+    float riverSway = sin(t * 0.75 - riverProgress * 5.0);
+    riverCenter += riverSway * 0.014 * riverProgress;
+
+    float riverWidth = 0.001
+        + 0.085 * riverProgress * riverProgress;
+
+    float riverDistance = abs(p.x - riverCenter);
+    float river = 1.0 - smoothstep(
+        riverWidth - edge, riverWidth + edge, riverDistance
+    );
+
+    float riverStart = 1.0 - smoothstep(0.025, 0.045, p.y);
+    river = river * riverStart;
+    color = color * (1.0 - river) + water * river;
+
+    // Let the reflection follow the river's curves.
+    float reflectionCenter = riverCenter
+        + sin(p.y * 23.0 + t * 1.1) * riverWidth * 0.18;
+
+    float acrossRiver = abs(p.x - reflectionCenter)
+                      / (riverWidth + 0.001);
+
+    float reflectionShape = 1.0 - smoothstep(
+        0.18, 0.78, acrossRiver
+    );
+
+    // Moving stripes suggest water flowing toward us.
+    float ripplePhase = riverProgress * 65.0
+        - riverProgress * riverProgress * 20.0
+        - t * 2.2;
+
+    float ripple = 0.5 + 0.5 * sin(ripplePhase);
+    ripple = ripple * ripple;
+    ripple = ripple * ripple;
+
+    float reflectionArea = smoothstep(
+        0.08, 0.30, riverProgress
+    );
+    float reflection = reflectionShape * reflectionArea * river;
+
+    // Soft gold underneath the brighter moving marks.
+    float goldAmount = reflection * (0.10 + ripple * 0.65);
+    vec3 gold = vec3(0.79, 0.57, 0.30);
+    color = color * (1.0 - goldAmount) + gold * goldAmount;
+
+    float glintWave = 0.5 + 0.5 * sin(ripplePhase + 1.4);
+    float glint = smoothstep(0.96, 1.0, glintWave);
+    glint = glint * reflection * 0.55;
+
+    vec3 paleLight = vec3(0.99, 0.94, 0.78);
+    color = color * (1.0 - glint) + paleLight * glint;
+
+    gl_FragColor = vec4(color, 1.0);
+}
+</script>
+
+<!-- This part runs the shader in the browser. -->
+<script>
+(() => {
+  const canvas = document.getElementById("art");
+  const errorBox = document.getElementById("error");
+
+  try {
+    const gl = canvas.getContext("webgl", {
+      alpha: false,
+      antialias: false
+    });
+
+    if (!gl) {
+      throw new Error("此浏览器无法启动 WebGL，请尝试使用 Chrome 或 Edge。");
+    }
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const message = gl.getShaderInfoLog(shader);
+        gl.deleteShader(shader);
+        throw new Error(message);
+      }
+
+      return shader;
+    }
+
+    const vertex = compile(gl.VERTEX_SHADER, `
+      attribute vec2 a_position;
+
+      void main() {
+        gl_Position = vec4(a_position, 0.0, 1.0);
+      }
+    `);
+
+    const fragment = compile(
+      gl.FRAGMENT_SHADER,
+      document.getElementById("fragment").textContent
+    );
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    gl.useProgram(program);
+
+    // Two triangles cover the whole canvas.
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([
+        -1, -1,  1, -1, -1,  1,
+        -1,  1,  1, -1,  1,  1
+      ]),
+      gl.STATIC_DRAW
+    );
+
+    const position = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const resolution = gl.getUniformLocation(program, "u_resolution");
+    const time = gl.getUniformLocation(program, "u_time");
+    const start = performance.now();
+
+    function draw(now) {
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.round(canvas.clientWidth * pixelRatio));
+      const height = Math.max(1, Math.round(canvas.clientHeight * pixelRatio));
+
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform2f(resolution, canvas.width, canvas.height);
+
+      // Send elapsed seconds to the shader on every frame.
+      gl.uniform1f(time, (now - start) / 1000);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(draw);
+    }
+
+    requestAnimationFrame(draw);
+  } catch (error) {
+    errorBox.hidden = false;
+    errorBox.textContent = "画面加载失败：\n" + error.message;
+  }
+})();
+</script>
+</body>
+</html>

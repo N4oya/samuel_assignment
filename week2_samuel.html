@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+html, body { margin: 0; width: 100%; height: 100%; background: #111; }
+body { display: grid; place-items: center; overflow: hidden; }
+canvas { display: block; width: 100vmin; height: 100vmin; }
+</style>
+</head>
+<body>
+<canvas id="glass" width="600" height="600" aria-label="可用鼠标擦去雾气的玻璃"></canvas>
+<script id="fragment" type="x-shader/x-fragment">
+#ifdef GL_ES
+precision highp float;
+#endif
+
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+uniform float u_time;
+uniform float u_delta;
+uniform sampler2D u_buffer0;
+uniform sampler2D u_tex0;
+
+float random(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = random(i);
+    float b = random(i + vec2(1.0, 0.0));
+    float c = random(i + vec2(0.0, 1.0));
+    float d = random(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+void main() {
+    vec2 st = gl_FragCoord.xy / u_resolution;
+    vec2 umouse = u_mouse / u_resolution;
+    float aspect = u_resolution.x / u_resolution.y;
+    vec2 offset = (st - umouse) * vec2(aspect, 1.0);
+    float wipe = 1.0 - smoothstep(0.08, 0.12, length(offset));
+
+#ifdef BUFFER_0
+    float oldWipe = texture2D(u_buffer0, st).r;
+    float memory = max(oldWipe - u_delta * 0.06, wipe);
+    gl_FragColor = vec4(vec3(memory), 1.0);
+#else
+    vec2 uv = mix(vec2(0.218, 0.330), vec2(0.640, 0.6465), st);
+    vec3 photo = texture2D(u_tex0, uv).rgb;
+    vec2 p = st * vec2(aspect, 1.0) * 6.0;
+    float n = 0.7 * noise(p + u_time * 0.025)
+            + 0.3 * noise(p * 3.0);
+    float fog = 0.55 + n * 0.35;
+    float cleared = max(texture2D(u_buffer0, st).r, wipe);
+    fog *= 1.0 - cleared;
+    vec3 color = mix(photo, vec3(0.82, 0.86, 0.88), fog);
+    gl_FragColor = vec4(color, 1.0);
+#endif
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/glslCanvas@0.2.6/dist/GlslCanvas.js"></script>
+<script>
+const canvas = document.getElementById('glass');
+canvas.width = canvas.height = Math.floor(canvas.clientWidth * (window.devicePixelRatio || 1));
+const shader = new GlslCanvas(canvas);
+const photo = new Image();
+photo.crossOrigin = 'anonymous';
+photo.onload = () => {
+    shader.loadTexture('u_tex0', photo);
+    shader.load(document.getElementById('fragment').textContent);
+};
+photo.src = 'https://images.unsplash.com/photo-1760334335396-fd245777990a?w=1600&q=85&fm=jpg';
+</script>
+</body>
+</html>
