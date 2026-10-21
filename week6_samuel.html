@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>worst volume slider</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100svh; display: grid; place-items: center; background: #fafaf8; }
+svg { display: block; width: min(680px, 100vw, 100svh); height: auto; overflow: visible; user-select: none; }
+#handle { cursor: grab; touch-action: none; outline: none; }
+#handle.dragging { cursor: grabbing; }
+.grip, .handle-shadow { transition: filter .15s, opacity .15s; }
+#handle:hover .grip, #handle.dragging .grip { filter: brightness(1.06); }
+#handle.dragging .handle-shadow { opacity: .2; }
+#handle:focus-visible .grip { stroke: #6a91aa; stroke-width: 3; }
+@media (prefers-reduced-motion: reduce) { .grip, .handle-shadow { transition: none; } }
+</style>
+</head>
+<body>
+<svg id="valve" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 620">
+  <defs>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff"/><stop offset=".18" stop-color="#b9bebf"/>
+      <stop offset=".35" stop-color="#f5f7f6"/><stop offset=".5" stop-color="#565d5e"/>
+      <stop offset=".62" stop-color="#c3c8c9"/><stop offset=".85" stop-color="#f1f3f2"/><stop offset="1" stop-color="#8c9495"/>
+    </linearGradient>
+    <radialGradient id="plate" cx=".35" cy=".25" r=".8">
+      <stop stop-color="#f0f2f1"/><stop offset=".45" stop-color="#c9cecd"/>
+      <stop offset=".7" stop-color="#a0a8a9"/><stop offset=".88" stop-color="#dce0df"/><stop offset="1" stop-color="#b7bdbd"/>
+    </radialGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2=".15">
+      <stop stop-color="#616a6b"/><stop offset=".14" stop-color="#f7f9f8"/>
+      <stop offset=".36" stop-color="#b4bdbd"/><stop offset=".58" stop-color="#e2e7e6"/>
+      <stop offset=".84" stop-color="#9da6a6"/><stop offset="1" stop-color="#f3f5f4"/>
+    </linearGradient>
+    <linearGradient id="grip" x1="0" y1="0" x2="1" y2=".35">
+      <stop stop-color="#717a7b"/><stop offset=".12" stop-color="#edf0ef"/>
+      <stop offset=".2" stop-color="#b2bbbb"/><stop offset=".65" stop-color="#dce1e0"/><stop offset="1" stop-color="#939d9e"/>
+    </linearGradient>
+    <linearGradient id="temperature"><stop stop-color="#6a9ebc"/><stop offset=".48" stop-color="#c0c5bd"/><stop offset="1" stop-color="#b96155"/></linearGradient>
+    <radialGradient id="shadow"><stop stop-color="#293334" stop-opacity=".17"/><stop offset="1" stop-color="#293334" stop-opacity="0"/></radialGradient>
+  </defs>
+  <g aria-hidden="true">
+    <ellipse cx="329" cy="285" rx="191" ry="220" fill="url(#shadow)"/>
+    <ellipse cx="320" cy="260" rx="164" ry="194" fill="url(#rim)" stroke="#d9dedd"/>
+    <ellipse cx="320" cy="260" rx="155" ry="185" fill="url(#plate)" stroke="#aab2b2"/>
+    <path d="M186 289 C166 191 218 96 305 84" fill="none" stroke="#fff" stroke-width="5" opacity=".55"/>
+    <path d="M203 355 C249 441 381 448 433 357" fill="none" stroke="#eef1ef" stroke-width="7" opacity=".4"/>
+    <path d="M129.68 348.75 A210 210 0 0 0 510.32 348.75" fill="none" stroke="#667373" stroke-width="8" opacity=".15"/>
+    <path d="M129.68 348.75 A210 210 0 0 0 510.32 348.75" fill="none" stroke="url(#temperature)" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="320" cy="267" rx="73" ry="70" fill="#555f60" stroke="url(#rim)" stroke-width="7"/>
+    <ellipse cx="320" cy="263" rx="62" ry="60" fill="#202728"/>
+    <path d="M268 269 C264 232 283 213 309 211" fill="none" stroke="#dfe4e3" stroke-width="9" opacity=".7"/>
+    <g id="cold" transform="translate(72 240)" fill="#6094b3" stroke="#6094b3" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0 15 H8 L21 5 V39 L8 29 H0 Z" stroke="none"/>
+      <path d="M28 15 Q35 22 28 29" fill="none"/>
+    </g>
+    <g id="hot" transform="translate(524 240)" opacity=".4" fill="#b56155" stroke="#b56155" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0 15 H8 L21 5 V39 L8 29 H0 Z" stroke="none"/>
+      <path d="M28 15 Q35 22 28 29 M35 9 Q47 22 35 35 M42 3 Q59 22 42 41" fill="none"/>
+    </g>
+  </g>
+  <g id="handle" role="slider" tabindex="0" aria-label="Volume valve" aria-valuemin="0" aria-valuemax="100" aria-valuenow="38" transform="rotate(15.6 320 260)">
+    <path class="handle-shadow" d="M320 220 C365 218 378 253 363 284 L359 417 Q351 443 325 437 L301 433 L292 282 C270 255 281 222 320 220" fill="#283334" opacity=".12" transform="translate(7 8)"/>
+    <ellipse cx="320" cy="260" rx="57" ry="53" fill="url(#chrome)" stroke="#8d9899" stroke-width="1.2"/>
+    <path class="grip" d="M305 235 C315 224 342 226 353 239 C365 253 362 278 360 299 L352 417 Q349 436 330 437 L312 434 Q301 431 300 416 L293 278 C291 258 295 244 305 235 Z" fill="url(#grip)" stroke="#9ba5a5" stroke-width="1.4"/>
+    <path d="M305 246 C299 258 302 280 303 300 L309 414 Q310 424 316 425" fill="none" stroke="#fff" stroke-width="2.5" opacity=".65"/>
+    <path d="M350 250 C356 279 352 323 350 346" fill="none" stroke="#788586" stroke-width="1.5" opacity=".4"/>
+  </g>
+  <g id="meter" role="progressbar" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="7">
+    <rect x="200" y="530" width="240" height="6" rx="3" fill="#dce0df"/>
+    <rect id="fill" x="200" y="530" width="15.86" height="6" rx="3" fill="#6b8791"/>
+    <text id="readout" x="320" y="574" text-anchor="middle" fill="#4e5b5f" font-family="Arial, sans-serif" font-size="22" style="font-variant-numeric: tabular-nums">7%</text>
+  </g>
+</svg>
+<script>
+const valve = document.querySelector('#valve');
+const handle = document.querySelector('#handle');
+const cold = document.querySelector('#cold');
+const hot = document.querySelector('#hot');
+const meter = document.querySelector('#meter');
+const fill = document.querySelector('#fill');
+const readout = document.querySelector('#readout');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let position = 38;
+let shown = position;
+let velocity = 0;
+let targetVolume = volumeAt(position);
+let volume = targetVolume;
+let previousTime = 0;
+let drag = null;
+
+function volumeAt(value) {
+  if (value < 46) return value / 46 * 8;
+  if (value < 54) return 8 + (value - 46) / 8 * 84;
+  return 92 + (value - 54) / 46 * 8;
+}
+
+function turn(value) {
+  position = Math.max(0, Math.min(100, value));
+  handle.setAttribute('aria-valuenow', Math.round(position));
+  const nextVolume = volumeAt(position);
+  setTimeout(() => { targetVolume = nextVolume; }, 1100);
+}
+
+function animate(time) {
+  const dt = Math.min((time - previousTime) / 1000, .032);
+  previousTime = time;
+  velocity += ((position - shown) * 180 - velocity * (drag ? 24 : 18)) * dt;
+  shown += velocity * dt;
+  if (shown < 0 || shown > 100) { shown = Math.max(0, Math.min(100, shown)); velocity = 0; }
+  volume += (targetVolume - volume) * (1 - Math.exp(-8 * dt));
+  if (reducedMotion) { shown = position; velocity = 0; volume = targetVolume; }
+  handle.setAttribute('transform', 'rotate(' + (65 - shown * 1.3) + ' 320 260)');
+  const warmth = volume / 100;
+  cold.setAttribute('opacity', .35 + .65 * (1 - warmth));
+  hot.setAttribute('opacity', .35 + .65 * warmth);
+  const size = reducedMotion ? 1 : 1 + warmth * .06;
+  hot.setAttribute('transform', 'translate(550 262) scale(' + size + ') translate(-26 -22)');
+  fill.setAttribute('width', volume * 2.4);
+  readout.textContent = Math.round(volume) + '%';
+  meter.setAttribute('aria-valuenow', Math.round(volume));
+  requestAnimationFrame(animate);
+}
+
+handle.addEventListener('pointerdown', event => {
+  if (drag || !event.isPrimary || event.button !== 0) return;
+  turn(shown);
+  velocity = 0;
+  drag = { id: event.pointerId, x: event.clientX, start: position };
+  handle.classList.add('dragging');
+  handle.setPointerCapture(event.pointerId);
+  handle.focus();
+});
+handle.addEventListener('pointermove', event => {
+  if (!drag || event.pointerId !== drag.id) return;
+  const width = valve.getBoundingClientRect().width;
+  turn(drag.start + (event.clientX - drag.x) / width * 220);
+});
+handle.addEventListener('pointerup', event => {
+  if (drag && event.pointerId === drag.id) handle.releasePointerCapture(event.pointerId);
+});
+function release() { drag = null; handle.classList.remove('dragging'); }
+handle.addEventListener('lostpointercapture', release);
+handle.addEventListener('pointercancel', release);
+handle.addEventListener('keydown', event => {
+  const values = { ArrowRight: position + 1, ArrowUp: position + 1, ArrowLeft: position - 1, ArrowDown: position - 1, Home: 0, End: 100 };
+  if (!(event.key in values)) return;
+  event.preventDefault();
+  turn(values[event.key]);
+});
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
