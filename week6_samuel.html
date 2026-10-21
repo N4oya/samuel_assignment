@@ -90,6 +90,38 @@ let targetVolume = volumeAt(position);
 let volume = targetVolume;
 let previousTime = 0;
 let drag = null;
+let audio, chime;
+let pendingChanges = 0;
+let soundPending = false;
+
+function enableSound() {
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!audio) audio = new Audio();
+    audio.resume().catch(() => {});
+  } catch (_) {}
+}
+
+function playChime() {
+  if (!audio || audio.state !== 'running' || volume < .05) return;
+  const tone = audio.createOscillator();
+  const gain = audio.createGain();
+  const now = audio.currentTime;
+  const loudness = .22 * Math.pow(volume / 100, 1.3);
+  chime = gain;
+  [784, 659.25].forEach((frequency, i) => {
+    const start = now + i * .24;
+    tone.frequency.setValueAtTime(frequency, start);
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(loudness, start + .008);
+    gain.gain.exponentialRampToValueAtTime(.00001, start + .22);
+    gain.gain.setValueAtTime(0, start + .23);
+  });
+  tone.connect(gain).connect(audio.destination);
+  tone.start(now);
+  tone.stop(now + .48);
+  tone.onended = () => { tone.disconnect(); gain.disconnect(); if (chime === gain) chime = null; };
+}
 
 function volumeAt(value) {
   if (value < 46) return value / 46 * 8;
@@ -101,7 +133,10 @@ function turn(value) {
   position = Math.max(0, Math.min(100, value));
   handle.setAttribute('aria-valuenow', Math.round(position));
   const nextVolume = volumeAt(position);
-  setTimeout(() => { targetVolume = nextVolume; }, 1100);
+  pendingChanges++;
+  soundPending = true;
+  if (chime) { chime.gain.cancelScheduledValues(audio.currentTime); chime.gain.setTargetAtTime(0, audio.currentTime, .01); }
+  setTimeout(() => { targetVolume = nextVolume; pendingChanges--; }, 1100);
 }
 
 function animate(time) {
@@ -121,11 +156,16 @@ function animate(time) {
   fill.setAttribute('width', volume * 2.4);
   readout.textContent = Math.round(volume) + '%';
   meter.setAttribute('aria-valuenow', Math.round(volume));
+  if (soundPending && !drag && pendingChanges === 0 && Math.abs(volume - targetVolume) < .05) {
+    soundPending = false;
+    if (!document.hidden) playChime();
+  }
   requestAnimationFrame(animate);
 }
 
 handle.addEventListener('pointerdown', event => {
   if (drag || !event.isPrimary || event.button !== 0) return;
+  enableSound();
   turn(shown);
   velocity = 0;
   drag = { id: event.pointerId, x: event.clientX, start: position };
@@ -148,6 +188,7 @@ handle.addEventListener('keydown', event => {
   const values = { ArrowRight: position + 1, ArrowUp: position + 1, ArrowLeft: position - 1, ArrowDown: position - 1, Home: 0, End: 100 };
   if (!(event.key in values)) return;
   event.preventDefault();
+  enableSound();
   turn(values[event.key]);
 });
 requestAnimationFrame(animate);
